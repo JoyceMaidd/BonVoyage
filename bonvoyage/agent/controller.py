@@ -1,7 +1,7 @@
 import os
 from bonvoyage.models.trip_state import TripState, TripPhase
 from bonvoyage.models.tool_schemas import TOOLS_BY_PHASE
-from bonvoyage.logging.tracer import log_event
+from bonvoyage.logging_custom.tracer import log_event
 from bonvoyage.tools.attraction_search import search_attractions
 from bonvoyage.tools.hostel_search import find_hostels
 from bonvoyage.tools.discount_lookup import lookup_discounts

@@ -11,7 +11,7 @@ from bonvoyage.models.tool_schemas import TOOLS_BY_PHASE
 from bonvoyage.agent.prompt_loader import build_system_prompt, get_prompt_version
 from bonvoyage.agent.intent_extractor import extract_trip_intent, build_missing_fields_prompt
 from bonvoyage.agent.controller import dispatch
-from bonvoyage.logging.tracer import log_event
+from bonvoyage.logging_custom.tracer import log_event
 
 
 def _make_tool_config(tools: list[dict]) -> list:
