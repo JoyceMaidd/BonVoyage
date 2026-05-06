@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import google.generativeai as genai
+from google import genai
 from tenacity import retry, wait_exponential, stop_after_attempt
 
 from bonvoyage.models.trip_state import TripState, TripPhase
@@ -17,16 +18,10 @@ from bonvoyage.agent.intent_extractor import extract_trip_intent, build_missing_
 from bonvoyage.agent.controller import dispatch
 from bonvoyage.logging_custom.tracer import log_event
 from bonvoyage.tools.exporter import export_csv, generate_markdown_summary
+from bonvoyage.gemini_client import get_client
 
 
 # ── Gemini setup ──────────────────────────────────────────────────────────────
-
-def _configure_gemini():
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if api_key:
-        genai.configure(api_key=api_key)
-    return api_key
-
 
 def _make_tool_config(tools: list[dict]) -> list:
     if not tools:
@@ -37,13 +32,14 @@ def _make_tool_config(tools: list[dict]) -> list:
 
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=30), stop=stop_after_attempt(3))
-def _call_gemini(model, history, system_prompt, tools):
+def _call_gemini(client: genai.Client, history: list, system_prompt: str, tools: list):
+    """Call Gemini API with system prompt and optional tools."""
     delay = float(os.environ.get("GEMINI_CALL_DELAY", "0"))
     if delay > 0:
-        import time
         time.sleep(delay)
-    return model.generate_content(
-        history,
+    return client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=history,
         system_instruction=system_prompt,
         tools=_make_tool_config(tools) if tools else None,
     )
@@ -83,6 +79,7 @@ def _log(session_id, step, phase, event, **kwargs):
 
 def _run_agent_turn(user_input: str):
     """Process one user message through the agent. May do multiple tool calls before waiting."""
+    client = get_client()
     state: TripState = st.session_state.trip_state
     history: list = st.session_state.history
     session_id = st.session_state.session_id
@@ -130,8 +127,6 @@ def _run_agent_turn(user_input: str):
     state.phase = _maybe_advance_phase(state, user_input)
 
     # --- ReAct inner loop: keep calling Gemini until it produces a text response ---
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
     for _ in range(6):  # Safety cap on back-to-back tool calls
         if state.phase == TripPhase.DONE:
             break
@@ -143,7 +138,7 @@ def _run_agent_turn(user_input: str):
              tools=[t["name"] for t in tools])
 
         with st.spinner("Thinking..."):
-            response = _call_gemini(model, history, system_prompt, tools)
+            response = _call_gemini(client, history, system_prompt, tools)
 
         candidate = response.candidates[0]
         function_call = None
@@ -292,8 +287,10 @@ def _render_sidebar(state: TripState):
 def main():
     st.set_page_config(page_title="BonVoyage", page_icon="✈️", layout="wide")
 
-    api_key = _configure_gemini()
-    if not api_key:
+    # Verify API key is available
+    try:
+        get_client()
+    except ValueError:
         st.error("GEMINI_API_KEY not set. Add it to your .env file.")
         st.stop()
 

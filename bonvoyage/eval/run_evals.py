@@ -13,10 +13,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv()
 
-import google.generativeai as genai
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+from google import genai
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 from bonvoyage.agent.intent_extractor import extract_trip_intent
 from bonvoyage.models.trip_state import TripState, Attraction
