@@ -2,8 +2,7 @@ import os
 import time
 import uuid
 from collections.abc import Generator
-
-import google.generativeai as genai
+from google import genai
 from tenacity import retry, wait_exponential, stop_after_attempt
 
 from bonvoyage.models.trip_state import TripState, TripPhase
@@ -12,6 +11,7 @@ from bonvoyage.agent.prompt_loader import build_system_prompt, get_prompt_versio
 from bonvoyage.agent.intent_extractor import extract_trip_intent, build_missing_fields_prompt
 from bonvoyage.agent.controller import dispatch
 from bonvoyage.logging_custom.tracer import log_event
+from bonvoyage.gemini_client import get_client
 
 
 def _make_tool_config(tools: list[dict]) -> list:
@@ -23,12 +23,14 @@ def _make_tool_config(tools: list[dict]) -> list:
 
 
 @retry(wait=wait_exponential(multiplier=1, min=2, max=30), stop=stop_after_attempt(3))
-def _call_gemini(model: genai.GenerativeModel, history: list, system_prompt: str, tools: list):
+def _call_gemini(client: genai.Client, history: list, system_prompt: str, tools: list):
+    """Call Gemini API with system prompt and optional tools."""
     delay = float(os.environ.get("GEMINI_CALL_DELAY", "0"))
     if delay > 0:
         time.sleep(delay)
-    return model.generate_content(
-        history,
+    return client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=history,
         system_instruction=system_prompt,
         tools=_make_tool_config(tools) if tools else None,
     )
@@ -48,10 +50,9 @@ def run_session(
     Returns:
         Final TripState after session completes.
     """
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    client = get_client()
 
     session_id = str(uuid.uuid4())[:8]
-    model = genai.GenerativeModel("gemini-1.5-flash")
 
     log_event(session_id, 0, "INIT", "session_start",
               prompt_version=get_prompt_version(), initial_input=initial_input)
@@ -112,7 +113,7 @@ def run_session(
         log_event(session_id, state.step, state.phase.value, "llm_call",
                   tools=[t["name"] for t in tools])
 
-        response = _call_gemini(model, history, system_prompt, tools)
+        response = _call_gemini(client, history, system_prompt, tools)
         candidate = response.candidates[0]
 
         # Check for function call

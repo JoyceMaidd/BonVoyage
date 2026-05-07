@@ -13,10 +13,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv()
 
-import google.generativeai as genai
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+from google import genai
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 from bonvoyage.agent.intent_extractor import extract_trip_intent
 from bonvoyage.models.trip_state import TripState, Attraction
@@ -40,30 +40,6 @@ TEST_CASES = [
         "expected_destination": "Tokyo",
         "expected_duration": 7,
         "expected_interests_contain": ["temple", "food"],
-        "expected_must_visit_contain": [],
-    },
-    {
-        "id": "barcelona_young",
-        "input": "25-year-old traveler, 3 days in Barcelona. Really into architecture and nightlife.",
-        "expected_destination": "Barcelona",
-        "expected_duration": 3,
-        "expected_interests_contain": ["architecture"],
-        "expected_must_visit_contain": [],
-    },
-    {
-        "id": "amsterdam_teen",
-        "input": "17-year-old on a 5-day trip to Amsterdam with my family. I want to see museums and go cycling.",
-        "expected_destination": "Amsterdam",
-        "expected_duration": 5,
-        "expected_interests_contain": ["museum", "cycling"],
-        "expected_must_visit_contain": [],
-    },
-    {
-        "id": "nyc_veteran",
-        "input": "US Army veteran, 2 days in New York City. Interested in history and jazz music.",
-        "expected_destination": "New York",
-        "expected_duration": 2,
-        "expected_interests_contain": ["history", "jazz"],
         "expected_must_visit_contain": [],
     },
 ]

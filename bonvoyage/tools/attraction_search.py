@@ -1,11 +1,12 @@
 import json
 import os
 from tavily import TavilyClient
-import google.generativeai as genai
+from google import genai
 from pydantic import ValidationError
 
 from bonvoyage.models.trip_state import Attraction
 from bonvoyage.tools.geocoder import geocode_address
+from bonvoyage.gemini_client import generate_content
 
 
 def search_attractions(
@@ -44,9 +45,7 @@ For each attraction output a JSON object with exactly these fields:
 
 Output ONLY a JSON array of objects. No explanation, no markdown fences."""
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(extraction_prompt)
-    raw = response.text.strip()
+    raw = generate_content(extraction_prompt)
 
     # Strip markdown fences if present
     if raw.startswith("```"):

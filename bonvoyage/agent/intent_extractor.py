@@ -1,7 +1,6 @@
 import json
-import os
-import google.generativeai as genai
 from pydantic import BaseModel
+from bonvoyage.gemini_client import generate_content
 
 
 class ExtractedIntent(BaseModel):
@@ -32,9 +31,7 @@ Examples of must_visit: "Eiffel Tower", "Opera de Paris", "Sagrada Familia"
 
 Output ONLY the JSON object. No explanation, no markdown fences."""
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
+    raw = generate_content(prompt)
 
     if raw.startswith("```"):
         raw = raw.split("```")[1]
