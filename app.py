@@ -14,7 +14,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt
 from bonvoyage.models.trip_state import TripState, TripPhase
 from bonvoyage.models.tool_schemas import TOOLS_BY_PHASE
 from bonvoyage.agent.prompt_loader import build_system_prompt, get_prompt_version
-from bonvoyage.agent.intent_extractor import extract_trip_intent, build_missing_fields_prompt
+from bonvoyage.agent.intent_extractor import extract_trip_intent
 from bonvoyage.agent.controller import dispatch
 from bonvoyage.logging_custom.tracer import log_event
 from bonvoyage.tools.exporter import export_csv, generate_markdown_summary
@@ -102,14 +102,15 @@ def _run_agent_turn(user_input: str):
         _log(session_id, 0, "GATHERING", "intent_extracted",
              destination=state.destination, duration_days=state.duration_days)
 
-        if intent.missing_fields:
-            follow_up = build_missing_fields_prompt(intent)
+        if not state.is_intent_complete():
+            if not state.destination and not state.duration_days:
+                follow_up = "Which place are you visiting, and for how many days?"
+            elif not state.destination:
+                follow_up = "Which place are you planning to visit?"
+            else:
+                follow_up = f"How many days are you planning to stay in {state.destination}?"
             _add_message("assistant", follow_up)
             history.append({"role": "model", "parts": [follow_up]})
-            return  # Wait for user to provide missing info
-
-        if not state.is_intent_complete():
-            _add_message("assistant", "I couldn't determine your destination or trip length. Could you rephrase?")
             return
 
         state.phase = TripPhase.SEARCHING

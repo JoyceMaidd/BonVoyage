@@ -22,7 +22,7 @@ def _make_tool_config(tools: list[dict]) -> list:
     ])]
 
 
-@retry(wait=wait_exponential(multiplier=1, min=2, max=30), stop=stop_after_attempt(3))
+@retry(wait=wait_exponential(multiplier=1, min=2, max=30), stop=stop_after_attempt(3), reraise=True)
 def _call_gemini(client: genai.Client, history: list, system_prompt: str, tools: list):
     """Call Gemini API with system prompt and optional tools."""
     delay = float(os.environ.get("GEMINI_CALL_DELAY", "0"))

@@ -13,8 +13,7 @@ system: |
 
 phase_addenda:
   GATHERING: |
-    You have just received the user's initial trip request.
-    Your goal: confirm you have destination and duration. If either is missing, ask one consolidated follow-up.
+    Trip intent is collected programmatically by the intent extractor before the conversation reaches you.
     Do NOT start searching yet.
 
   SEARCHING: |
